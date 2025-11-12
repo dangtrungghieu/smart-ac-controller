@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "1080540753303",
+    "firebase_url": "https://ac-control-db-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "ac-control-db",
+    "storage_bucket": "ac-control-db.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1080540753303:android:a8d7c885d7eab8cf1568d2",
+        "android_client_info": {
+          "package_name": "com.example.ac_control_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAaouJgX6CmOgyZEM1jdRvIrGG2s-60rq8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
