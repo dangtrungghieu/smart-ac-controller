@@ -1,0 +1,55 @@
+<div style="
+    border: 1px solid #333;
+    padding: 18px;
+    background: #fff;
+    border-radius: 8px;
+    font-family: 'Times New Roman', serif;
+    line-height: 1.55;
+">
+    <h3 style="margin-top:0">Thuật toán Tự động tắt khi không có người</h3>
+
+    <p><b>Chu kỳ kiểm tra:</b> <i>T_poll = 10 giây</i></p>
+
+    <h4>1. Thu thập dữ liệu đầu vào</h4>
+    <ul>
+        <li>Trạng thái hiện diện: <code>P_status</code> (True/False)</li>
+        <li>Thời điểm cuối cùng phát hiện người: <code>T_last_seen</code></li>
+        <li>Thời gian trễ cấu hình: <code>T_delay</code> (phút)</li>
+        <li>Trạng thái máy lạnh: <code>AC_on</code> (True/False)</li>
+    </ul>
+
+    <h4>2. Xử lý trạng thái người dùng</h4>
+    <pre style="
+        background:#f7f7f7;
+        padding:12px;
+        border-radius:6px;
+        border:1px solid #ddd;
+        overflow-x:auto;
+    "><code>
+if P_status == True:
+    T_last_seen ← null        # Hủy bộ đếm
+    (kết thúc vòng lặp)
+
+else:   # P_status == False
+    if T_last_seen == null:
+        T_last_seen ← T_current
+        (lưu vào cơ sở dữ liệu)
+    else:
+        Δt = T_current - T_last_seen
+    </code></pre>
+
+    <h4>3. Quyết định điều khiển</h4>
+    <pre style="
+        background:#f7f7f7;
+        padding:12px;
+        border-radius:6px;
+        border:1px solid #ddd;
+        overflow-x:auto;
+    "><code>
+if Δt ≥ T_delay AND AC_on == True:
+    sendCommand("POWER_OFF")
+    T_last_seen ← null        # Reset
+else:
+    (không làm gì – chưa đủ thời gian hoặc máy đã tắt)
+    </code></pre>
+</div>

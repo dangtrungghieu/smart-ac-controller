@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Demo - Devices Management V3</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="assets/css/devices_v3.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f7fa;
+            padding: 40px 20px;
+        }
+
+        .demo-container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .demo-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .demo-header h1 {
+            font-size: 32px;
+            color: #2196F3;
+            margin-bottom: 12px;
+        }
+
+        .demo-header p {
+            color: #666;
+            font-size: 16px;
+        }
+
+        .demo-section {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        }
+
+        .demo-section h2 {
+            font-size: 20px;
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .demo-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #2196F3, #1976D2);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(33, 150, 243, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <div class="demo-header">
+            <h1>📱 Devices Management V3 - Demo</h1>
+            <p>Giao diện quản lý thiết bị hiện đại với Pagination, Modal đẹp & PDF chuyên nghiệp</p>
+        </div>
+
+        <div class="demo-section">
+            <div class="demo-toolbar">
+                <h2 style="margin: 0; padding: 0; border: none;">Danh sách thiết bị</h2>
+                <button class="btn" onclick="addDemoDevice()">➕ Thêm thiết bị mới</button>
+            </div>
+
+            <div id="devicesCardsContainer">
+                <!-- Cards sẽ được render ở đây -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Mock data
+        let mockDevices = {
+            'dv_001': {
+                info: {
+                    deviceId: 'dv_001',
+                    deviceName: 'Máy lạnh phòng khách',
+                    claimCode: 'ABC123',
+                    ownerId: 'user1',
+                    claimed: true,
+                    createdAt: Date.now()
+                },
+                ownerName: 'Nguyễn Văn A',
+                status: { online: true }
+            },
+            'dv_002': {
+                info: {
+                    deviceId: 'dv_002',
+                    deviceName: 'Máy lạnh phòng ngủ chính',
+                    claimCode: 'DEF456',
+                    ownerId: 'user2',
+                    claimed: true,
+                    createdAt: Date.now() - 86400000
+                },
+                ownerName: 'Trần Thị B',
+                status: { online: false }
+            },
+            'dv_003': {
+                info: {
+                    deviceId: 'dv_003',
+                    deviceName: 'Máy lạnh phòng làm việc',
+                    claimCode: 'GHI789',
+                    ownerId: 'user3',
+                    claimed: false,
+                    createdAt: Date.now() - 172800000
+                },
+                ownerName: 'Lê Văn C',
+                status: { online: true }
+            },
+            'dv_004': {
+                info: {
+                    deviceId: 'dv_004',
+                    deviceName: 'AC Phòng bếp',
+                    claimCode: 'JKL012',
+                    ownerId: null,
+                    claimed: false,
+                    createdAt: Date.now()
+                },
+                ownerName: null,
+                status: { online: false }
+            },
+            'dv_005': {
+                info: {
+                    deviceId: 'dv_005',
+                    deviceName: 'Điều hòa tầng 2',
+                    claimCode: 'MNO345',
+                    ownerId: 'user5',
+                    claimed: true,
+                    createdAt: Date.now()
+                },
+                ownerName: 'Phạm Thị D',
+                status: { online: true }
+            },
+            'dv_006': {
+                info: {
+                    deviceId: 'dv_006',
+                    deviceName: 'AC Văn phòng',
+                    claimCode: 'PQR678',
+                    ownerId: 'user6',
+                    claimed: true,
+                    createdAt: Date.now()
+                },
+                ownerName: 'Hoàng Văn E',
+                status: { online: true }
+            },
+            'dv_007': {
+                info: {
+                    deviceId: 'dv_007',
+                    deviceName: 'Máy lạnh phòng khách 2',
+                    claimCode: 'STU901',
+                    ownerId: 'user7',
+                    claimed: false,
+                    createdAt: Date.now()
+                },
+                ownerName: 'Vũ Thị F',
+                status: { online: false }
+            }
+        };
+
+        let currentPage = 1;
+        const devicesPerPage = 6;
+
+        function renderDeviceCards() {
+            const container = document.getElementById('devicesCardsContainer');
+            const devices = Object.entries(mockDevices);
+            const totalDevices = devices.length;
+            const totalPages = Math.ceil(totalDevices / devicesPerPage);
+
+            if (totalDevices === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="bi bi-inbox"></i>
+                        <h3>Chưa có thiết bị</h3>
+                        <p>Nhấn "Thêm thiết bị" để bắt đầu</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const startIndex = (currentPage - 1) * devicesPerPage;
+            const endIndex = startIndex + devicesPerPage;
+            const currentDevices = devices.slice(startIndex, endIndex);
+
+            let html = '<div class="devices-grid">';
+
+            currentDevices.forEach(([deviceId, device]) => {
+                const info = device.info || {};
+                const status = device.status || {};
+                const deviceName = info.deviceName?.trim() || 'Chưa đặt tên';
+                const ownerName = device.ownerName || 'Chưa có chủ';
+                const isOnline = status.online === true;
+                const claimCode = info.claimCode || '------';
+                const maskedCode = claimCode.substring(0, 2) + '••••';
+
+                html += `
+                    <div class="device-card ${isOnline ? 'online' : 'offline'}">
+                        <div class="card-header">
+                            <div class="device-status">
+                                <span class="status-dot ${isOnline ? 'online' : 'offline'}"></span>
+                                <span class="status-text">${isOnline ? 'Online' : 'Offline'}</span>
+                            </div>
+                            <button class="btn-device-action" onclick="showDeviceActionModal('${deviceId}')" title="Thao tác">
+                                <i class="bi bi-three-dots-vertical"></i>
+                            </button>
+                        </div>
+
+                        <div class="card-body">
+                            <h3 class="device-name" title="${deviceName}">${deviceName}</h3>
+                            <div class="device-info">
+                                <div class="info-row">
+                                    <span class="label">Mã thiết bị:</span>
+                                    <code class="device-id">${deviceId}</code>
+                                </div>
+                                <div class="info-row">
+                                    <span class="label">Claim Code:</span>
+                                    <div class="claim-code-wrapper">
+                                        <code class="claim-code" id="claim-${deviceId}">${maskedCode}</code>
+                                        <button class="btn-toggle-claim" onclick="toggleClaimCode('${deviceId}')" title="Hiển thị">
+                                            <i class="bi bi-eye" id="eye-${deviceId}"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="info-row">
+                                    <span class="label">Chủ sở hữu:</span>
+                                    <span class="owner-name">${ownerName}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card-footer">
+                            <div class="sensors-status">
+                                <span class="sensor-badge ${isOnline ? 'active' : 'inactive'}" title="DHT">
+                                    <i class="bi bi-thermometer-half"></i>
+                                </span>
+                                <span class="sensor-badge inactive" title="MQ">
+                                    <i class="bi bi-droplet"></i>
+                                </span>
+                                <span class="sensor-badge inactive" title="PIR">
+                                    <i class="bi bi-radar"></i>
+                                </span>
+                                <span class="sensor-badge inactive" title="LDR">
+                                    <i class="bi bi-brightness-high"></i>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += '</div>';
+
+            // Pagination
+            if (totalPages > 1) {
+                html += '<div class="pagination">';
+                html += `
+                    <button class="page-btn prev ${currentPage === 1 ? 'disabled' : ''}"
+                            onclick="goToPage(${currentPage - 1})"
+                            ${currentPage === 1 ? 'disabled' : ''}>
+                        <i class="bi bi-chevron-left"></i> Trước
+                    </button>
+                `;
+
+                html += '<div class="page-numbers">';
+                for (let i = 1; i <= totalPages; i++) {
+                    if (
+                        i === 1 ||
+                        i === totalPages ||
+                        (i >= currentPage - 1 && i <= currentPage + 1)
+                    ) {
+                        html += `
+                            <button class="page-btn ${i === currentPage ? 'active' : ''}"
+                                    onclick="goToPage(${i})">
+                                ${i}
+                            </button>
+                        `;
+                    } else if (i === currentPage - 2 || i === currentPage + 2) {
+                        html += '<span class="page-ellipsis">...</span>';
+                    }
+                }
+                html += '</div>';
+
+                html += `
+                    <button class="page-btn next ${currentPage === totalPages ? 'disabled' : ''}"
+                            onclick="goToPage(${currentPage + 1})"
+                            ${currentPage === totalPages ? 'disabled' : ''}>
+                        Sau <i class="bi bi-chevron-right"></i>
+                    </button>
+                `;
+
+                html += '</div>';
+            }
+
+            container.innerHTML = html;
+        }
+
+        function goToPage(page) {
+            const totalPages = Math.ceil(Object.keys(mockDevices).length / devicesPerPage);
+            if (page < 1 || page > totalPages) return;
+
+            currentPage = page;
+            renderDeviceCards();
+            document.querySelector('.devices-grid')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function toggleClaimCode(deviceId) {
+            const device = mockDevices[deviceId];
+            if (!device) return;
+
+            const codeElement = document.getElementById(`claim-${deviceId}`);
+            const iconElement = document.getElementById(`eye-${deviceId}`);
+            const claimCode = device.info?.claimCode || '------';
+            const maskedCode = claimCode.substring(0, 2) + '••••';
+
+            if (codeElement.textContent.includes('••')) {
+                codeElement.textContent = claimCode;
+                iconElement.className = 'bi bi-eye-slash';
+
+                setTimeout(() => {
+                    codeElement.textContent = maskedCode;
+                    iconElement.className = 'bi bi-eye';
+                }, 5000);
+            } else {
+                codeElement.textContent = maskedCode;
+                iconElement.className = 'bi bi-eye';
+            }
+        }
+
+        function showDeviceActionModal(deviceId) {
+            const device = mockDevices[deviceId];
+            if (!device) return;
+
+            const deviceName = device.info?.deviceName || 'Thiết bị';
+
+            const modalHTML = `
+                <div class="modal-overlay show" id="deviceActionModal" onclick="closeModalOnOverlay(event)">
+                    <div class="modal-container">
+                        <div class="modal-header">
+                            <div class="modal-title">
+                                <h2>${deviceName}</h2>
+                                <p class="modal-subtitle"><code>${deviceId}</code></p>
+                            </div>
+                            <button class="modal-close" onclick="closeModal()">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+
+                        <div class="modal-body">
+                            <button class="action-btn" onclick="handleAction('changeClaimCode', '${deviceId}')">
+                                <i class="bi bi-key"></i>
+                                <div class="action-content">
+                                    <span class="action-title">Đổi Claim Code</span>
+                                    <span class="action-desc">Thay đổi mã kích hoạt thiết bị</span>
+                                </div>
+                                <i class="bi bi-chevron-right"></i>
+                            </button>
+
+                            <button class="action-btn" onclick="handleAction('exportPDF', '${deviceId}')">
+                                <i class="bi bi-file-earmark-pdf"></i>
+                                <div class="action-content">
+                                    <span class="action-title">Xuất thông tin thiết bị</span>
+                                    <span class="action-desc">Tạo file PDF hướng dẫn cho khách hàng</span>
+                                </div>
+                                <i class="bi bi-chevron-right"></i>
+                            </button>
+
+                            <button class="action-btn danger" onclick="handleAction('deleteDevice', '${deviceId}')">
+                                <i class="bi bi-trash"></i>
+                                <div class="action-content">
+                                    <span class="action-title">Xóa thiết bị</span>
+                                    <span class="action-desc">Xóa vĩnh viễn khỏi hệ thống</span>
+                                </div>
+                                <i class="bi bi-chevron-right"></i>
+                            </button>
+                        </div>
+
+                        <div class="modal-footer">
+                            <button class="btn-cancel" onclick="closeModal()">Đóng</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+        }
+
+        function handleAction(action, deviceId) {
+            closeModal();
+
+            switch(action) {
+                case 'changeClaimCode':
+                    showVerificationModal(deviceId, () => {
+                        const newCode = prompt('Nhập Claim Code mới (6 ký tự):');
+                        if (newCode && newCode.length === 6) {
+                            mockDevices[deviceId].info.claimCode = newCode.toUpperCase();
+                            renderDeviceCards();
+                            alert('✅ Đã đổi Claim Code thành công!');
+                        }
+                    });
+                    break;
+                case 'exportPDF':
+                    alert('📄 Chức năng xuất PDF đang được triển khai...\n\nTrong phiên bản thật, file PDF sẽ tự động mở.');
+                    break;
+                case 'deleteDevice':
+                    showVerificationModal(deviceId, () => {
+                        if (confirm('⚠️ Xóa thiết bị này?\n\nKhông thể hoàn tác!')) {
+                            delete mockDevices[deviceId];
+                            const totalPages = Math.ceil(Object.keys(mockDevices).length / devicesPerPage);
+                            if (currentPage > totalPages && currentPage > 1) {
+                                currentPage--;
+                            }
+                            renderDeviceCards();
+                            alert('✅ Đã xóa thiết bị!');
+                        }
+                    });
+                    break;
+            }
+        }
+
+        function showVerificationModal(deviceId, callback) {
+            const device = mockDevices[deviceId];
+            const deviceName = device.info?.deviceName || 'Thiết bị';
+
+            const modalHTML = `
+                <div class="modal-overlay verification-modal show" id="verificationModal" onclick="closeModalOnOverlay(event)">
+                    <div class="modal-container small">
+                        <div class="modal-header">
+                            <h2>Xác thực</h2>
+                            <button class="modal-close" onclick="closeModal()">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+
+                        <div class="modal-body">
+                            <p class="verification-text">Vui lòng nhập mã xác thực để thực hiện thao tác trên thiết bị:</p>
+                            <p class="device-name-verify"><strong>${deviceName}</strong> <code>${deviceId}</code></p>
+
+                            <div class="form-group">
+                                <label for="verificationCode">Mã xác thực</label>
+                                <input type="password"
+                                       id="verificationCode"
+                                       class="form-control"
+                                       placeholder="Nhập mã 6 số"
+                                       maxlength="6"
+                                       autocomplete="off">
+                                <small class="form-hint">Demo: Mã xác thực là <strong>123456</strong></small>
+                                <div class="error-message" id="verificationError" style="display: none;"></div>
+                            </div>
+                        </div>
+
+                        <div class="modal-footer">
+                            <button class="btn-cancel" onclick="closeModal()">Hủy</button>
+                            <button class="btn-primary" onclick="verifyCode('${deviceId}', ${callback})">Xác nhận</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+            setTimeout(() => document.getElementById('verificationCode').focus(), 100);
+        }
+
+        function verifyCode(deviceId, callback) {
+            const input = document.getElementById('verificationCode');
+            const errorDiv = document.getElementById('verificationError');
+            const code = input.value.trim();
+
+            if (!code) {
+                showError('Vui lòng nhập mã xác thực');
+                return;
+            }
+
+            if (code !== '123456') {
+                showError('Mã xác thực không đúng. Vui lòng thử lại.');
+                input.value = '';
+                input.focus();
+                return;
+            }
+
+            closeModal();
+            callback();
+
+            function showError(message) {
+                errorDiv.textContent = message;
+                errorDiv.style.display = 'block';
+                input.classList.add('error');
+
+                setTimeout(() => {
+                    errorDiv.style.display = 'none';
+                    input.classList.remove('error');
+                }, 3000);
+            }
+        }
+
+        function closeModal() {
+            const modals = document.querySelectorAll('.modal-overlay');
+            modals.forEach(modal => {
+                modal.classList.remove('show');
+                setTimeout(() => modal.remove(), 300);
+            });
+        }
+
+        function closeModalOnOverlay(event) {
+            if (event.target.classList.contains('modal-overlay')) {
+                closeModal();
+            }
+        }
+
+        function addDemoDevice() {
+            const id = 'dv_' + String(Object.keys(mockDevices).length + 1).padStart(3, '0');
+            mockDevices[id] = {
+                info: {
+                    deviceId: id,
+                    deviceName: 'Thiết bị mới ' + (Object.keys(mockDevices).length + 1),
+                    claimCode: 'NEW' + String(Math.floor(Math.random() * 1000)).padStart(3, '0'),
+                    ownerId: null,
+                    claimed: false,
+                    createdAt: Date.now()
+                },
+                ownerName: null,
+                status: { online: Math.random() > 0.5 }
+            };
+            renderDeviceCards();
+        }
+
+        // Initial render
+        renderDeviceCards();
+    </script>
+</body>
+</html>

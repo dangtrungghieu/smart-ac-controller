@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart AC Admin - Hệ thống quản lý điều hòa</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/devices_modal.css">
+</head>
+<body>
+    <!-- ==================== MÀN HÌNH ĐĂNG NHẬP ==================== -->
+    <div id="loginPage" class="login-container">
+        <div class="login-box">
+            <div class="login-header">
+                <h1 class="company-logo">CÔNG TY GIẢI PHÁP SMART AC</h1>
+                <h2 class="system-name">HỆ THỐNG QUẢN LÝ ĐIỀU KHIỂN & GIÁM SÁT MÁY LẠNH</h2>
+            </div>
+
+            <form id="loginForm" class="login-form">
+                <div class="form-group">
+                    <label for="username">Tên đăng nhập</label>
+                    <input type="text" id="username" placeholder="Nhập username" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Mật khẩu</label>
+                    <input type="password" id="password" placeholder="Nhập mật khẩu" required>
+                </div>
+
+                <div id="loginError" class="error-message" style="display: none;">
+                    ❌ Sai tài khoản hoặc mật khẩu!
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block" id="loginBtn">
+                    <span id="loginBtnText">Đăng nhập</span>
+                    <span id="loginBtnSpinner" class="login-spinner" style="display: none;">
+                        <i class="spinner-icon"></i>
+                        Đang đăng nhập...
+                    </span>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ==================== GIAO DIỆN ADMIN DASHBOARD ==================== -->
+    <div id="adminDashboard" class="admin-container" style="display: none;">
+        <!-- Header -->
+        <header class="admin-header">
+            <div class="header-left">
+                <h1 class="header-logo">🌿 Smart AC Admin</h1>
+            </div>
+            <div class="header-right">
+                <span class="welcome-text">Xin chào, <strong>Admin</strong></span>
+                <div class="admin-avatar-container">
+                    <div class="admin-avatar" id="adminAvatar">
+                        <span class="avatar-text">A</span>
+                    </div>
+                    <div class="admin-dropdown" id="adminDropdown">
+                        <div class="dropdown-header">
+                            <div class="dropdown-avatar">A</div>
+                            <div class="dropdown-info">
+                                <strong>Admin</strong>
+                                <span>Quản trị viên</span>
+                            </div>
+                        </div>
+                        <div class="dropdown-divider"></div>
+                        <button class="dropdown-item" id="btnChangePasswordFromDropdown">
+                            <i class="bi bi-key"></i>
+                            <span>Đổi mật khẩu</span>
+                        </button>
+                        <button class="dropdown-item" id="btnChangeSecurityCodeFromDropdown">
+                            <i class="bi bi-shield-lock"></i>
+                            <span>Đổi mã xác thực</span>
+                        </button>
+                        <div class="dropdown-divider"></div>
+                        <button class="dropdown-item danger" id="logoutBtn">
+                            <i class="bi bi-box-arrow-right"></i>
+                            <span>Đăng xuất</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="admin-body">
+            <!-- Sidebar -->
+            <aside class="sidebar">
+                <nav class="sidebar-nav">
+                    <a href="#" class="nav-item active" data-section="dashboard">
+                        <span class="nav-icon">📊</span>
+                        <span class="nav-text">Dashboard</span>
+                    </a>
+                    <a href="#" class="nav-item" data-section="devices">
+                        <span class="nav-icon">📱</span>
+                        <span class="nav-text">Quản lý thiết bị</span>
+                    </a>
+                    <a href="#" class="nav-item" data-section="users">
+                        <span class="nav-icon">👥</span>
+                        <span class="nav-text">Quản lý người dùng</span>
+                    </a>
+                    <a href="#" class="nav-item" data-section="libraries">
+                        <span class="nav-icon">📚</span>
+                        <span class="nav-text">Thư viện máy lạnh</span>
+                    </a>
+                    <a href="#" class="nav-item" data-section="settings">
+                        <span class="nav-icon">⚙️</span>
+                        <span class="nav-text">Cài đặt</span>
+                    </a>
+                </nav>
+            </aside>
+
+            <!-- Main Content -->
+            <main class="main-content">
+                <!-- ==================== TAB DASHBOARD ==================== -->
+                <section id="dashboard" class="content-section active">
+                    <h2 class="page-title">Dashboard - Tổng quan hệ thống</h2>
+
+                    <!-- Stats Grid - Compact Cards -->
+                    <div class="dashboard-stats-grid">
+                        <div class="stat-card-large">
+                            <div class="stat-icon-large" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                                <span style="font-size: 32px;">📊</span>
+                            </div>
+                            <div class="stat-info-large">
+                                <h3>Tổng thiết bị</h3>
+                                <p class="stat-number-large" id="statTotalDevices">0</p>
+                                <span class="stat-subtitle">Đang quản lý</span>
+                            </div>
+                        </div>
+
+                        <div class="stat-card-large">
+                            <div class="stat-icon-large" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                                <span style="font-size: 32px;">📱</span>
+                            </div>
+                            <div class="stat-info-large">
+                                <h3>Đã sử dụng</h3>
+                                <p class="stat-number-large" id="statClaimed">0</p>
+                                <span class="stat-subtitle">Thiết bị hoạt động</span>
+                            </div>
+                        </div>
+
+                        <div class="stat-card-large">
+                            <div class="stat-icon-large" style="background: linear-gradient(135deg, #2196F3, #64B5F6);">
+                                <span style="font-size: 32px;">🆕</span>
+                            </div>
+                            <div class="stat-info-large">
+                                <h3>Chưa sử dụng</h3>
+                                <p class="stat-number-large" id="statUnclaimed">0</p>
+                                <span class="stat-subtitle">Thiết bị mới</span>
+                            </div>
+                        </div>
+
+                        <div class="stat-card-large">
+                            <div class="stat-icon-large" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                                <span style="font-size: 32px;">✅</span>
+                            </div>
+                            <div class="stat-info-large">
+                                <h3>Online</h3>
+                                <p class="stat-number-large" id="statOnline">0</p>
+                                <span class="stat-subtitle">Đang kết nối</span>
+                            </div>
+                        </div>
+
+                        <div class="stat-card-large">
+                            <div class="stat-icon-large" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+                                <span style="font-size: 32px;">❌</span>
+                            </div>
+                            <div class="stat-info-large">
+                                <h3>Offline</h3>
+                                <p class="stat-number-large" id="statOffline">0</p>
+                                <span class="stat-subtitle">Mất kết nối</span>
+                            </div>
+                        </div>
+
+                        
+                    </div>
+
+                    <!-- Secondary Stats -->
+                    <div class="secondary-stats-grid" style="grid-template-columns: repeat(2, 1fr);">
+                        <div class="secondary-stat-card">
+                            <div class="secondary-stat-icon" style="background: linear-gradient(135deg, #9C27B0, #BA68C8);">
+                                <span style="font-size: 28px;">👥</span>
+                            </div>
+                            <div class="secondary-stat-info">
+                                <p class="secondary-stat-number" id="statTotalUsers">0</p>
+                                <h4>Người dùng</h4>
+                            </div>
+                        </div>
+
+                        <div class="secondary-stat-card">
+                            <div class="secondary-stat-icon" style="background: linear-gradient(135deg, #E91E63, #F06292);">
+                                <span style="font-size: 28px;">📚</span>
+                            </div>
+                            <div class="secondary-stat-info">
+                                <p class="secondary-stat-number" id="statLibraries">0</p>
+                                <h4>Thư viện</h4>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions -->
+                    <div style="margin-top: 16px;">
+                        <h3 style="margin-bottom: 12px; font-size: 17px; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                            <span style="font-size: 20px;">⚡</span>
+                            <span>Thao tác nhanh</span>
+                        </h3>
+                        <div class="quick-actions-grid">
+                            <button class="quick-action-btn quick-action-primary" onclick="document.querySelector('[data-section=devices]').click(); setTimeout(() => document.getElementById('btnAddDevice')?.click(), 100);">
+                                <div class="quick-action-icon">
+                                    <i class="bi bi-plus-circle-fill"></i>
+                                </div>
+                                <div class="quick-action-text">
+                                    <h4>Thêm thiết bị</h4>
+                                    <p>Thêm thiết bị mới vào hệ thống</p>
+                                </div>
+                            </button>
+
+                            <button class="quick-action-btn quick-action-success" onclick="document.querySelector('[data-section=libraries]').click()">
+                                <div class="quick-action-icon">
+                                    <i class="bi bi-book-fill"></i>
+                                </div>
+                                <div class="quick-action-text">
+                                    <h4>Thư viện</h4>
+                                    <p>Quản lý thư viện máy lạnh</p>
+                                </div>
+                            </button>
+
+                            <button class="quick-action-btn quick-action-info" onclick="document.querySelector('[data-section=settings]').click()">
+                                <div class="quick-action-icon">
+                                    <i class="bi bi-gear-fill"></i>
+                                </div>
+                                <div class="quick-action-text">
+                                    <h4>Cài đặt</h4>
+                                    <p>Cấu hình hệ thống</p>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- System Info Card -->
+                    <div style="margin-top: 16px;">
+                        <div class="system-info-card">
+                            <div class="system-info-header">
+                                <h3 style="display: flex; align-items: center; gap: 8px; font-size: 17px; font-weight: 600;">
+                                    <span style="font-size: 20px;">ℹ️</span>
+                                    <span>Thông tin hệ thống</span>
+                                </h3>
+                            </div>
+                            <div class="system-info-grid">
+                                <div class="system-info-item">
+                                    <div class="system-info-icon">📅</div>
+                                    <div class="system-info-content">
+                                        <strong>Phiên bản</strong>
+                                        <span>v2.0.0</span>
+                                    </div>
+                                </div>
+                                <div class="system-info-item">
+                                    <div class="system-info-icon">🕐</div>
+                                    <div class="system-info-content">
+                                        <strong>Thời gian server</strong>
+                                        <span id="serverTime">--:--:--</span>
+                                    </div>
+                                </div>
+                                <div class="system-info-item">
+                                    <div class="system-info-icon">🔄</div>
+                                    <div class="system-info-content">
+                                        <strong>Cập nhật cuối</strong>
+                                        <span>28/11/2025</span>
+                                    </div>
+                                </div>
+                                <div class="system-info-item">
+                                    <div class="system-info-icon">🛡️</div>
+                                    <div class="system-info-content">
+                                        <strong>Bảo mật</strong>
+                                        <span style="color: #4CAF50; font-weight: 600;">✓ Đã kích hoạt</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ==================== TAB QUẢN LÝ THIẾT BỊ ==================== -->
+                <section id="devices" class="content-section">
+                    <div class="section-header">
+                        <h2 class="page-title">Quản lý thiết bị</h2>
+                        <button id="btnAddDevice" class="btn btn-primary">➕ Thêm thiết bị mới</button>
+                    </div>
+
+                    <!-- Filter & Search -->
+                    <div class="filter-container" style="margin-bottom: 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                        <input type="text" id="deviceSearchInput" class="form-control" placeholder="Tìm theo tên, mã thiết bị, chủ nhân..." style="flex: 1; max-width: 400px; min-width: 250px;">
+                        <select id="deviceStatusFilter" class="form-control" style="max-width: 200px;">
+                            <option value="">Tất cả trạng thái</option>
+                            <option value="online">✅ Online</option>
+                            <option value="offline">❌ Offline</option>
+                            <option value="claimed">👤 Đã sử dụng</option>
+                            <option value="unclaimed">🆕 Chưa sử dụng</option>
+                        </select>
+                        <button id="btnResetDeviceFilter" class="btn-reset">
+                            <i class="bi bi-arrow-counterclockwise"></i>
+                            <span>Làm mới</span>
+                        </button>
+                    </div>
+
+                    <div class="table-container">
+                        <table id="devicesTable" class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>STT</th>
+                                    <th>Tên thiết bị</th>
+                                    <th>Mã thiết bị</th>
+                                    <th>Chủ nhân</th>
+                                    <th>Claim Code</th>
+                                    <th>Trạng thái</th>
+                                    <th>ESP32</th>
+                                    <th>PZEM-004T</th>
+                                    <th>DHT22</th>
+                                    <th>HLK-LD2410</th>
+                                    <th>Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody id="devicesTableBody">
+                                <tr>
+                                    <td colspan="11" class="text-center">Đang tải dữ liệu...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    <div id="devicesPagination"></div>
+                </section>
+
+                <!-- ==================== TAB QUẢN LÝ NGƯỜI DÙNG ==================== -->
+                <section id="users" class="content-section">
+                    <div class="section-header">
+                        <h2 class="page-title">Quản lý người dùng</h2>
+                    </div>
+
+                    <!-- Filter & Search -->
+                    <div class="filter-container" style="margin-bottom: 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                        <input type="text" id="userSearchInput" class="form-control" placeholder="Tìm theo tên đầy đủ..." style="flex: 1; max-width: 400px; min-width: 250px;">
+                        <select id="userDeviceFilter" class="form-control" style="max-width: 200px;">
+                            <option value="">Tất cả</option>
+                            <option value="hasDevices">📱 Có thiết bị</option>
+                            <option value="noDevices">⭕ Chưa có thiết bị</option>
+                        </select>
+                        <button id="btnResetUserFilter" class="btn-reset">
+                            <i class="bi bi-arrow-counterclockwise"></i>
+                            <span>Làm mới</span>
+                        </button>
+                    </div>
+
+                    <div class="table-container">
+                        <table id="usersTable" class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>STT</th>
+                                    <th>Tên đầy đủ</th>
+                                    <th>Tài khoản / Email</th>
+                                    <th>Ngày đăng ký</th>
+                                    <th>Số thiết bị</th>
+                                </tr>
+                            </thead>
+                            <tbody id="usersTableBody">
+                                <tr>
+                                    <td colspan="5" class="text-center">Đang tải dữ liệu...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    <div id="usersPagination"></div>
+                </section>
+
+                <!-- ==================== TAB QUẢN LÝ THƯ VIỆN MÁY LẠNH ==================== -->
+                <section id="libraries" class="content-section">
+                    <div class="section-header">
+                        <h2 class="page-title">Quản lý thư viện máy lạnh</h2>
+                        <button id="btnAddLibrary" class="btn btn-primary">➕ Thêm thư viện</button>
+                    </div>
+
+                    <!-- Filter & Search -->
+                    <div class="filter-container" style="margin-bottom: 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                        <input type="text" id="librarySearchInput" class="form-control" placeholder="Tìm theo tên thư viện, hãng, model..." style="flex: 1; max-width: 400px; min-width: 250px;">
+                        <button id="btnResetLibraryFilter" class="btn-reset">
+                            <i class="bi bi-arrow-counterclockwise"></i>
+                            <span>Làm mới</span>
+                        </button>
+                    </div>
+
+                    <div class="table-container">
+                        <table id="librariesTable" class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>STT</th>
+                                    <th>Logo</th>
+                                    <th>Tên thư viện</th>
+                                    <th>Hãng</th>
+                                    <th>Mã Model</th>
+                                    <th>Ghi chú</th>
+                                    <th>Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody id="librariesTableBody">
+                                <tr>
+                                    <td colspan="7" class="text-center">Đang tải dữ liệu...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    <div id="librariesPagination"></div>
+                </section>
+
+                <!-- ==================== TAB CÀI ĐẶT ==================== -->
+                <section id="settings" class="content-section">
+                    <h2 class="page-title">Cài đặt hệ thống</h2>
+
+                    <div class="settings-grid">
+                        <!-- Card đổi mật khẩu admin -->
+                        <div class="card">
+                            <h3>🔒 Đổi mật khẩu Admin</h3>
+                            <button id="btnChangeAdminPassword" class="btn btn-primary">Đổi mật khẩu</button>
+                        </div>
+
+                        <!-- Card đổi mã xác thực -->
+                        <div class="card">
+                            <h3>🔐 Đổi mã xác thực</h3>
+                            <button id="btnChangeSecurityCode" class="btn btn-primary">Đổi mã xác thực</button>
+                        </div>
+
+                        <!-- Card chọn theme -->
+                        <div class="card">
+                            <h3>🎨 Giao diện</h3>
+                            <div class="form-group">
+                                <label>Chọn theme:</label>
+                                <select id="themeSelector" class="form-control">
+                                    <option value="light">Sáng (Light)</option>
+                                    <option value="dark">Tối (Dark)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Card cài đặt bảo mật -->
+                        <div class="card">
+                            <h3>🛡️ Bảo mật</h3>
+                            <div class="form-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="alwaysRequireSecurity">
+                                    Luôn yêu cầu mã xác thực cho thao tác nhạy cảm
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+
+        <!-- Footer -->
+        <footer class="admin-footer">
+            <p>Bản quyền © 2025 Công ty Giải pháp Smart AC | Design by Đặng Trung Hiếu (Đại học Thủ Dầu Một)</p>
+        </footer>
+    </div>
+
+    <!-- ==================== MODAL/POPUP (sẽ được tạo động bằng JS) ==================== -->
+    <div id="modalContainer"></div>
+
+    <!-- ==================== LOAD SCRIPTS ==================== -->
+    <!-- jsPDF cho chức năng in PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <!-- Firebase SDK -->
+    <script type="module" src="assets/js/firebase.js"></script>
+    <script type="module" src="assets/js/auth.js"></script>
+    <script type="module" src="assets/js/devices_final.js"></script>
+    <script type="module" src="assets/js/users.js"></script>
+    <script type="module" src="assets/js/libraries.js"></script>
+    <script type="module" src="assets/js/settings.js"></script>
+    <script type="module" src="assets/js/main.js"></script>
+</body>
+</html>

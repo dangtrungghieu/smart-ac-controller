@@ -1,72 +1,55 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:provider/provider.dart';
+import 'services/auth_service.dart';
+import 'services/device_service.dart';
+import 'services/schedule_service.dart';
+import 'services/schedule_executor.dart';
+import 'services/auto_off_service.dart';
+import 'screens/splash_screen.dart';
+import 'utils/theme.dart';
 
-void main() {
-  runApp(MyApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Khởi tạo Firebase - KHÔNG CẦN OPTIONS
+  await Firebase.initializeApp();
+  
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Login App',
-      home: LoginScreen(),
-    );
-  }
-}
+  const MyApp({super.key});
 
-class LoginScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Login'),
-      ),
-      body: Padding(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Logo
-            Icon(
-              Icons.ac_unit,
-              size: 100,
-              color: Colors.blue,
-            ),
-            SizedBox(height: 32),
-            
-            // Email field
-            TextField(
-              decoration: InputDecoration(
-                labelText: 'Email',
-                prefixIcon: Icon(Icons.email),
-                border: OutlineInputBorder(),
-              ),
-            ),
-            SizedBox(height: 16),
-            
-            // Password field
-            TextField(
-              obscureText: true,
-              decoration: InputDecoration(
-                labelText: 'Password',
-                prefixIcon: Icon(Icons.lock),
-                border: OutlineInputBorder(),
-              ),
-            ),
-            SizedBox(height: 24),
-            
-            // Login button
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  print('Login clicked!');
-                },
-                child: Text('LOGIN'),
-              ),
-            ),
-          ],
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AuthService()),
+        ChangeNotifierProvider(create: (_) => DeviceService()),
+        ChangeNotifierProvider(create: (_) => ScheduleService()),
+        Provider(
+          create: (_) {
+            final executor = ScheduleExecutor();
+            executor.startScheduleChecker(); // Bắt đầu kiểm tra lịch
+            return executor;
+          },
+          dispose: (_, executor) => executor.dispose(),
         ),
+        Provider(
+          create: (_) {
+            final autoOffService = AutoOffService();
+            autoOffService.startAutoOffMonitor(); // Bắt đầu auto-off monitor
+            return autoOffService;
+          },
+          dispose: (_, service) => service.dispose(),
+        ),
+      ],
+      child: MaterialApp(
+        title: 'AC Control',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.lightTheme,
+        home: const SplashScreen(),
       ),
     );
   }

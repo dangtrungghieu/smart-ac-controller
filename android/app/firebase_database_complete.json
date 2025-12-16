@@ -1,0 +1,101 @@
+{
+  "ir_library": {
+    "daikin": {
+      "name": "Daikin",
+      "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8c/Daikin_logo.svg/320px-Daikin_logo.svg.png",
+      "protocol": "DAIKIN",
+      "class": "IRDaikinESP",
+      "popular": true,
+      "tested": true,
+      "description": "Hỗ trợ đầy đủ tính năng: nhiệt độ, chế độ, quạt, swing"
+    },
+    "panasonic": {
+      "name": "Panasonic",
+      "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/Panasonic_logo_%28Blue%29.svg/320px-Panasonic_logo_%28Blue%29.svg.png",
+      "protocol": "PANASONIC_AC",
+      "class": "IRPanasonicAc",
+      "popular": true,
+      "tested": true,
+      "description": "Hỗ trợ điều khiển đầy đủ các dòng Panasonic phổ biến"
+    },
+    "mitsubishi": {
+      "name": "Mitsubishi Electric",
+      "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/Mitsubishi_Electric_logo.svg/320px-Mitsubishi_Electric_logo.svg.png",
+      "protocol": "MITSUBISHI_AC",
+      "class": "IRMitsubishiAC",
+      "popular": true,
+      "tested": true,
+      "description": "Tương thích với Mitsubishi Electric và Heavy Industries"
+    },
+    "lg": {
+      "name": "LG",
+      "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/LG_logo_%282015%29.svg/320px-LG_logo_%282015%29.svg.png",
+      "protocol": "LG",
+      "class": "IRLgAc",
+      "popular": true,
+      "tested": true,
+      "description": "Hỗ trợ các dòng LG inverter và thường"
+    },
+    "samsung": {
+      "name": "Samsung",
+      "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/24/Samsung_Logo.svg/320px-Samsung_Logo.svg.png",
+      "protocol": "SAMSUNG_AC",
+      "class": "IRSamsungAc",
+      "popular": true,
+      "tested": true,
+      "description": "Hỗ trợ Samsung Digital Inverter"
+    },
+    "toshiba": {
+      "name": "Toshiba",
+      "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/37/Toshiba_Logo.svg/320px-Toshiba_Logo.svg.png",
+      "protocol": "TOSHIBA_AC",
+      "class": "IRToshibaAC",
+      "popular": false,
+      "tested": false,
+      "description": "Hỗ trợ các dòng Toshiba RAS"
+    },
+    "carrier": {
+      "name": "Carrier",
+      "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4e/Carrier_logo.svg/320px-Carrier_logo.svg.png",
+      "protocol": "CARRIER_AC",
+      "class": "IRCarrierAc64",
+      "popular": false,
+      "tested": false,
+      "description": "Hỗ trợ Carrier 64-bit protocol"
+    },
+    "fujitsu": {
+      "name": "Fujitsu",
+      "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c6/Fujitsu-Logo.svg/320px-Fujitsu-Logo.svg.png",
+      "protocol": "FUJITSU_AC",
+      "class": "IRFujitsuAC",
+      "popular": false,
+      "tested": false,
+      "description": "Hỗ trợ Fujitsu ARRAH2E và các model tương tự"
+    },
+    "sharp": {
+      "name": "Sharp",
+      "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8f/Sharp_Logo.svg/320px-Sharp_Logo.svg.png",
+      "protocol": "SHARP_AC",
+      "class": "IRSharpAc",
+      "popular": false,
+      "tested": false,
+      "description": "Hỗ trợ Sharp AC protocol"
+    },
+    "gree": {
+      "name": "Gree",
+      "logo": "https://example.com/gree.png",
+      "protocol": "GREE",
+      "class": "IRGreeAC",
+      "popular": false,
+      "tested": false,
+      "description": "Hỗ trợ các dòng Gree YAC"
+    }
+  },
+  
+  "system": {
+    "version": "1.0.0",
+    "lastUpdate": 1700000000000,
+    "maintenance": false,
+    "announcement": ""
+  }
+}

@@ -1,0 +1,1147 @@
+/**
+ * ==============================================
+ * DEVICES MANAGEMENT MODULE
+ * ==============================================
+ * Quản lý thiết bị: Thêm, sửa, xóa, hiển thị, in PDF
+ */
+
+import { readData, writeData, updateData, deleteData, firebaseEnabled } from './firebase.js';
+
+// Mock data cho trường hợp không có Firebase
+let mockDevices = {};
+
+/**
+ * Khởi tạo module Devices
+ */
+export async function initDevices() {
+    console.log('📱 Khởi tạo module Devices...');
+
+    // Load dữ liệu thiết bị
+    await loadDevices();
+
+    // Gắn sự kiện nút "Thêm thiết bị"
+    document.getElementById('btnAddDevice').addEventListener('click', showAddDeviceModal);
+
+    // Gắn event listeners cho menu actions (chỉ 1 lần)
+    setupDeviceActionsListeners();
+
+    // Render bảng thiết bị
+    renderDeviceTable();
+
+    // Bắt đầu giám sát liên tục sensor status
+    startContinuousMonitoring();
+}
+
+/**
+ * Setup event listeners cho device actions - chỉ gọi 1 lần khi init
+ */
+function setupDeviceActionsListeners() {
+    console.log('🔗 Setup event listeners cho device actions...');
+
+    // Event delegation cho toàn bộ document
+    document.addEventListener('click', function(e) {
+        // Xử lý nút mở menu
+        const openBtn = e.target.closest('.btn-open-menu');
+        if (openBtn) {
+            e.stopPropagation();
+            const deviceId = openBtn.getAttribute('data-device-id');
+            openActionsMenu(deviceId);
+            return;
+        }
+
+        // Xử lý các nút action trong menu
+        const actionBtn = e.target.closest('.btn-action-item');
+        if (actionBtn) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const action = actionBtn.getAttribute('data-action');
+            const deviceId = actionBtn.getAttribute('data-device-id');
+
+            console.log(`🎯 Click detected - Action: ${action}, Device: ${deviceId}`);
+            handleDeviceAction(action, deviceId);
+            return;
+        }
+
+        // Click overlay để đóng menu
+        const overlay = e.target.closest('.actions-overlay');
+        if (overlay && e.target === overlay) {
+            console.log('📍 Click overlay - đóng menu');
+            closeAllMenus();
+        }
+    });
+
+    console.log('✅ Event listeners đã được setup trên document');
+}
+
+/**
+ * Mở menu actions cho thiết bị
+ */
+function openActionsMenu(deviceId) {
+    console.log('📂 Mở menu cho device:', deviceId);
+
+    const overlay = document.getElementById('actionsOverlay');
+    const menu = document.getElementById(`actions_${deviceId}`);
+
+    if (!menu || !overlay) {
+        console.error('❌ Không tìm thấy menu hoặc overlay');
+        return;
+    }
+
+    // Đóng tất cả menu khác
+    closeAllMenus();
+
+    // Mở menu này
+    menu.style.display = 'block';
+    overlay.classList.add('show');
+    overlay.style.display = 'block';
+}
+
+/**
+ * Đóng tất cả menu actions
+ */
+function closeAllMenus() {
+    document.querySelectorAll('.device-actions-menu').forEach(m => {
+        m.style.display = 'none';
+    });
+
+    const overlay = document.getElementById('actionsOverlay');
+    if (overlay) {
+        overlay.classList.remove('show');
+        overlay.style.display = 'none';
+    }
+}
+
+/**
+ * Xử lý action từ menu
+ */
+function handleDeviceAction(action, deviceId) {
+    console.log(`🎯 Action: ${action}, Device: ${deviceId}`);
+
+    switch(action) {
+        case 'changeClaimCode':
+            changeClaimCode(deviceId);
+            break;
+        case 'exportDeviceInfo':
+            exportDeviceInfo(deviceId);
+            break;
+        case 'deleteDevice':
+            deleteDevice(deviceId);
+            break;
+        case 'closeActions':
+            closeAllMenus();
+            break;
+        default:
+            console.error('❌ Unknown action:', action);
+    }
+}
+
+/**
+ * Giám sát liên tục trạng thái sensors
+ */
+function startContinuousMonitoring() {
+    console.log('🔄 Bắt đầu giám sát liên tục sensor status...');
+
+    // Cập nhật mỗi 5 giây
+    setInterval(async () => {
+        try {
+            // Load lại status data từ Firebase
+            const statusData = await readData('status');
+
+            if (statusData) {
+                // Cập nhật status cho từng thiết bị
+                for (const [deviceId, newStatus] of Object.entries(statusData)) {
+                    if (mockDevices[deviceId]) {
+                        // Chỉ cập nhật status, không thay đổi device info
+                        mockDevices[deviceId].status = {
+                            ...mockDevices[deviceId].status,
+                            ...newStatus
+                        };
+                    }
+                }
+
+                // Re-render bảng để hiển thị trạng thái mới
+                renderDeviceTable();
+                updateDeviceStats();
+            }
+        } catch (error) {
+            console.error('❌ Lỗi khi giám sát sensors:', error);
+        }
+    }, 15000); // 15 giây
+}
+
+/**
+ * Load danh sách thiết bị từ Firebase hoặc mock data
+ */
+async function loadDevices() {
+    try {
+        console.log('🔄 Đang load thiết bị từ Firebase...');
+        const devicesData = await readData('devices');
+        const statusData = await readData('status');
+        const usersData = await readData('users');
+
+        if (devicesData && Object.keys(devicesData).length > 0) {
+            // Gộp dữ liệu device và status
+            mockDevices = {};
+
+            for (const [deviceId, device] of Object.entries(devicesData)) {
+                // Lấy thông tin owner nếu có
+                let ownerName = null;
+                if (device.info && device.info.ownerId && usersData) {
+                    const owner = usersData[device.info.ownerId];
+                    if (owner) {
+                        ownerName = owner.displayName || owner.email || device.info.ownerId;
+                    }
+                }
+
+                mockDevices[deviceId] = {
+                    ...device,
+                    ownerName: ownerName, // Thêm tên chủ nhân
+                    status: statusData && statusData[deviceId] ? statusData[deviceId] : {
+                        online: false,
+                        ac: { power: false, temperature: 25 },
+                        room: { temperature: 28, humidity: 60 }
+                    }
+                };
+            }
+
+            console.log('✅ Đã load thiết bị từ Firebase:', Object.keys(mockDevices).length, 'thiết bị');
+        } else {
+            console.log('⚠️ Không có dữ liệu thiết bị trong Firebase, dùng mock data');
+            mockDevices = generateMockDevices();
+        }
+    } catch (error) {
+        console.error('❌ Lỗi khi load thiết bị:', error);
+        mockDevices = generateMockDevices();
+    }
+}
+
+/**
+ * Tạo dữ liệu thiết bị mẫu
+ */
+function generateMockDevices() {
+    return {
+        device_001: createDeviceData('device_001', 'ABC001', 'Phòng khách', 'Điều hòa phòng khách'),
+        device_002: createDeviceData('device_002', 'ABC002', 'Phòng ngủ', 'Điều hòa phòng ngủ'),
+        device_003: createDeviceData('device_003', 'ABC003', 'Văn phòng', 'Điều hòa văn phòng')
+    };
+}
+
+/**
+ * Tạo cấu trúc dữ liệu device theo đúng format
+ */
+function createDeviceData(deviceId, claimCode, roomName = '', deviceName = '') {
+    return {
+        info: {
+            deviceId: deviceId,
+            claimCode: claimCode,
+            published: true,
+            claimed: false,
+            owner: null,
+            deviceName: "",
+            roomName: "",
+            macAddress: "",
+            firmwareVersion: "",
+            createdAt: Date.now(),
+            lastModified: Date.now()
+        },
+        wifi: {
+            configured: false,
+            ssid: "",
+            connected: false,
+            signalStrength: 0,
+            ip: "",
+            lastConnected: 0
+        },
+        ir: {
+            setupCompleted: false,
+            method: "",
+            library: {
+                brandId: "",
+                selectedAt: 0
+            },
+            learned: {
+                progress: 0,
+                commands: {
+                    power: "",
+                    temp_up: "",
+                    temp_down: ""
+                }
+            }
+        },
+        settings: {
+            autoOffEnabled: true,
+            autoOffDelay: 300,
+            notifications: true,
+            temperatureUnit: "celsius"
+        }
+    };
+}
+
+/**
+ * Generate MAC address ngẫu nhiên
+ */
+function generateMacAddress() {
+    return 'XX:XX:XX:XX:XX:XX'.replace(/X/g, () => {
+        return '0123456789ABCDEF'.charAt(Math.floor(Math.random() * 16));
+    });
+}
+
+/**
+ * Generate IP address ngẫu nhiên
+ */
+function generateRandomIP() {
+    return `192.168.1.${Math.floor(Math.random() * 255)}`;
+}
+
+/**
+ * Render bảng thiết bị
+ */
+export function renderDeviceTable() {
+    const tbody = document.getElementById('devicesTableBody');
+
+    if (Object.keys(mockDevices).length === 0) {
+        tbody.innerHTML = '<tr><td colspan="11" class="text-center">Chưa có thiết bị nào</td></tr>';
+        return;
+    }
+
+    // Áp dụng filter
+    const filteredDevices = filterDevices();
+
+    if (Object.keys(filteredDevices).length === 0) {
+        tbody.innerHTML = '<tr><td colspan="11" class="text-center">Không tìm thấy thiết bị nào phù hợp</td></tr>';
+        return;
+    }
+
+    let html = '';
+    let rowNum = 1;
+
+    for (const [deviceId, device] of Object.entries(filteredDevices)) {
+        const info = device.info || {};
+        const status = device.status || {};
+
+        const isOnline = status.online === true;
+        const claimCode = info.claimCode || '------';
+
+        // Hiển thị tên thiết bị: nếu chưa có thì hiển thị "..."
+        const deviceName = (info.deviceName && info.deviceName.trim() !== '') ? info.deviceName : '...';
+
+        // Hiển thị chủ nhân: nếu claimed = true và có ownerId thì hiển thị tên, không thì "..."
+        const ownerDisplay = (info.claimed === true && device.ownerName) ? device.ownerName : '...';
+
+        // Tính toán sensor status
+        const sensorStatus = calculateSensorStatus(deviceId, status);
+
+        html += `
+            <tr>
+                <td>${rowNum++}</td>
+                <td><strong>${deviceName}</strong></td>
+                <td><code>${deviceId}</code></td>
+                <td>${ownerDisplay}</td>
+                <td style="position: relative;">
+                    <span id="claim_${deviceId}" style="display: inline-block; min-width: 60px;">••••••</span>
+                    <button class="btn-icon" onclick="window.deviceModule.showClaimCode('${deviceId}')" title="Xem Claim Code">
+                        <i id="claim_eye_${deviceId}" class="bi bi-eye"></i>
+                    </button>
+                </td>
+                <td>
+                    <span class="status-badge ${isOnline ? 'status-online' : 'status-offline'}">
+                        ${isOnline ? '🟢 Online' : '🔴 Offline'}
+                    </span>
+                </td>
+                <td>
+                    <span class="sensor-badge ${sensorStatus.esp32 ? 'sensor-online' : 'sensor-offline'}">
+                        ${sensorStatus.esp32 ? '✅' : '❌'}
+                    </span>
+                </td>
+                <td>
+                    <span class="sensor-badge ${sensorStatus.pzem ? 'sensor-online' : 'sensor-offline'}">
+                        ${sensorStatus.pzem ? '✅' : '❌'}
+                    </span>
+                </td>
+                <td>
+                    <span class="sensor-badge ${sensorStatus.dht22 ? 'sensor-online' : 'sensor-offline'}">
+                        ${sensorStatus.dht22 ? '✅' : '❌'}
+                    </span>
+                </td>
+                <td>
+                    <span class="sensor-badge ${sensorStatus.hlk ? 'sensor-online' : 'sensor-offline'}">
+                        ${sensorStatus.hlk ? '✅' : '❌'}
+                    </span>
+                </td>
+                <td>
+                    <button class="btn-icon btn-open-menu" data-device-id="${deviceId}" title="Thao tác">
+                        <i class="bi bi-three-dots-vertical"></i>
+                    </button>
+                    <div id="actions_${deviceId}" class="device-actions-menu" style="display: none;">
+                        <div class="actions-header">
+                            <strong>${deviceName}</strong><br>
+                            <code>${deviceId}</code>
+                        </div>
+                        <button class="btn btn-sm btn-primary btn-action-item" data-action="changeClaimCode" data-device-id="${deviceId}">
+                            <i class="bi bi-key"></i> Đổi Claim Code
+                        </button>
+                        <button class="btn btn-sm btn-success btn-action-item" data-action="exportDeviceInfo" data-device-id="${deviceId}">
+                            <i class="bi bi-file-earmark-text"></i> Xuất thông tin
+                        </button>
+                        <button class="btn btn-sm btn-danger btn-action-item" data-action="deleteDevice" data-device-id="${deviceId}">
+                            <i class="bi bi-trash"></i> Xóa
+                        </button>
+                        <button class="btn btn-sm btn-secondary btn-action-item" data-action="closeActions" data-device-id="${deviceId}">
+                            <i class="bi bi-x-circle"></i> Hủy
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }
+
+    tbody.innerHTML = html;
+}
+
+/**
+ * Tính toán trạng thái sensors
+ */
+function calculateSensorStatus(deviceId, status) {
+    const now = Date.now();
+    const sensors = status.sensors || {};
+
+    // DHT22: Online nếu temp cập nhật liên tục (không dừng quá 10 giây)
+    const dht22LastUpdate = sensors.dht22LastUpdate || 0;
+    const dht22Online = (now - dht22LastUpdate) < 10000;
+
+    // HLK-LD2410: Online nếu cảm biến người cập nhật trong 24h
+    const hlkLastUpdate = sensors.hlkLastUpdate || 0;
+    const hlkOnline = (now - hlkLastUpdate) < 86400000; // 24h
+
+    // ESP32: Sử dụng trạng thái online thực tế từ Firebase
+    // Nếu không có status.online, mặc định là offline (false)
+    const esp32Online = status.online === true;
+
+    // PZEM-004T: Online nếu current/power cập nhật trong 24h
+    const pzemLastUpdate = sensors.pzemLastUpdate || 0;
+    const pzemOnline = (now - pzemLastUpdate) < 86400000; // 24h
+
+    return {
+        esp32: esp32Online,
+        dht22: dht22Online,
+        hlk: hlkOnline,
+        pzem: pzemOnline
+    };
+}
+
+/**
+ * Hiển thị modal thêm thiết bị mới
+ */
+function showAddDeviceModal() {
+    const modalHTML = `
+        <div class="modal show" id="addDeviceModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 class="modal-title">➕ Thêm thiết bị mới</h3>
+                    <button class="modal-close" id="closeAddDevice">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form id="addDeviceForm">
+                        <div class="form-group">
+                            <label>Device ID *</label>
+                            <input type="text" id="newDeviceId" class="form-control" placeholder="dv_01" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Claim Code (6 ký tự) *</label>
+                            <input type="text" id="newClaimCode" class="form-control" placeholder="ABC001" maxlength="6" required>
+                        </div>
+
+                        <div class="form-group" style="text-align: center;">
+                            <button type="button" class="btn btn-secondary" id="btnGenerateCode">🎲 Tạo ngẫu nhiên ID và Code</button>
+                        </div>
+
+                        <div id="addDeviceError" class="error-message" style="display: none; margin-top: 12px;">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" id="btnCancelAddDevice">Hủy</button>
+                    <button class="btn btn-primary" id="btnSaveDevice">💾 Lưu thiết bị</button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    const container = document.getElementById('modalContainer');
+    container.innerHTML = modalHTML;
+
+    // Gắn sự kiện
+    document.getElementById('closeAddDevice').onclick = () => document.getElementById('addDeviceModal').remove();
+    document.getElementById('btnCancelAddDevice').onclick = () => document.getElementById('addDeviceModal').remove();
+    document.getElementById('btnGenerateCode').onclick = generateRandomDeviceAndCode;
+    document.getElementById('btnSaveDevice').onclick = saveNewDevice;
+}
+
+/**
+ * Tạo ngẫu nhiên Device ID và Claim Code
+ */
+function generateRandomDeviceAndCode() {
+    // Tạo Device ID: dv_XX (XX là số ngẫu nhiên từ 01-99)
+    const deviceNum = String(Math.floor(Math.random() * 99) + 1).padStart(2, '0');
+    const deviceId = `dv_${deviceNum}`;
+
+    // Tạo Claim Code: 6 ký tự chữ và số
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let code = '';
+    for (let i = 0; i < 6; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+
+    document.getElementById('newDeviceId').value = deviceId;
+    document.getElementById('newClaimCode').value = code;
+}
+
+/**
+ * Lưu thiết bị mới
+ */
+async function saveNewDevice() {
+    const deviceId = document.getElementById('newDeviceId').value.trim();
+    const claimCode = document.getElementById('newClaimCode').value.trim().toUpperCase();
+
+    const errorDiv = document.getElementById('addDeviceError');
+
+    // Validate
+    if (!deviceId || !claimCode) {
+        errorDiv.textContent = '❌ Vui lòng điền đầy đủ Device ID và Claim Code!';
+        errorDiv.style.display = 'block';
+        return;
+    }
+
+    if (claimCode.length !== 6) {
+        errorDiv.textContent = '❌ Claim Code phải có đúng 6 ký tự!';
+        errorDiv.style.display = 'block';
+        return;
+    }
+
+    // Kiểm tra trùng device ID
+    if (mockDevices[deviceId]) {
+        errorDiv.textContent = `❌ Device ID "${deviceId}" đã tồn tại!`;
+        errorDiv.style.display = 'block';
+        return;
+    }
+
+    // Tạo dữ liệu device với thông tin tối thiểu
+    const deviceData = createDeviceData(deviceId, claimCode, '', '');
+
+    // Lưu vào Firebase hoặc mock data
+    try {
+        if (firebaseEnabled) {
+            await writeData(`devices/${deviceId}`, deviceData);
+        }
+
+        mockDevices[deviceId] = deviceData;
+
+        // Đóng modal
+        document.getElementById('addDeviceModal').remove();
+
+        // Render lại bảng
+        renderDeviceTable();
+        updateDeviceStats();
+
+        // Hiển thị thông báo và hỏi có muốn in PDF không
+        if (confirm(`✅ Đã thêm thiết bị "${deviceId}" thành công!\n\nBạn có muốn in PDF thông tin thiết bị không?`)) {
+            exportDevicePDF(deviceId);
+        }
+
+    } catch (error) {
+        errorDiv.textContent = '❌ Lỗi khi lưu thiết bị: ' + error.message;
+        errorDiv.style.display = 'block';
+    }
+}
+
+/**
+ * In PDF thông tin thiết bị (sử dụng jsPDF)
+ */
+function printDevicePDF(deviceId, deviceName, claimCode) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    // Logo (text)
+    doc.setFontSize(24);
+    doc.setFont(undefined, 'bold');
+    doc.text('SMART AC', 105, 30, { align: 'center' });
+
+    // Đường kẻ
+    doc.setLineWidth(0.5);
+    doc.line(20, 40, 190, 40);
+
+    // Tiêu đề
+    doc.setFontSize(16);
+    doc.text('THONG TIN THIET BI', 105, 55, { align: 'center' });
+
+    // Nội dung
+    doc.setFontSize(12);
+    doc.setFont(undefined, 'normal');
+
+    doc.text('Ma thiet bi (Device ID):', 30, 75);
+    doc.setFont(undefined, 'bold');
+    doc.text(deviceId, 30, 85);
+
+    doc.setFont(undefined, 'normal');
+    doc.text('Ma kich hoat (Claim Code):', 30, 105);
+    doc.setFont(undefined, 'bold');
+    doc.setFontSize(18);
+    doc.text(claimCode, 30, 115);
+
+    doc.setFontSize(12);
+    doc.setFont(undefined, 'normal');
+    doc.text('Ten thiet bi:', 30, 135);
+    doc.setFont(undefined, 'bold');
+    doc.text(deviceName, 30, 145);
+
+    // Lời cảm ơn
+    doc.setFont(undefined, 'italic');
+    doc.setFontSize(10);
+    doc.text('Cam on quy khach da su dung dich vu cua chung toi!', 105, 180, { align: 'center' });
+
+    // Ngày tạo
+    doc.setFont(undefined, 'normal');
+    doc.setFontSize(9);
+    doc.text(`Ngay tao: ${new Date().toLocaleString('vi-VN')}`, 105, 270, { align: 'center' });
+
+    // Tải xuống
+    doc.save(`Device_${deviceId}_${claimCode}.pdf`);
+
+    console.log('✅ Đã tạo PDF cho thiết bị:', deviceId);
+}
+
+/**
+ * Đổi Claim Code của thiết bị (yêu cầu xác thực)
+ */
+function changeClaimCode(deviceId) {
+    console.log('🔑 changeClaimCode called for device:', deviceId);
+    const device = mockDevices[deviceId];
+    if (!device) {
+        console.error('❌ Device not found:', deviceId);
+        return;
+    }
+
+    // Đóng menu trước tiên
+    console.log('  - Đóng menu...');
+    closeAllMenus();
+
+    // Import showSecurityPrompt từ auth.js
+    console.log('  - Import auth module...');
+    import('./auth.js').then(({ showSecurityPrompt }) => {
+        console.log('  - Show security prompt...');
+        showSecurityPrompt(() => {
+            console.log('  - Xác thực thành công, hiển thị modal...');
+            // Sau khi xác thực thành công, hiển thị modal đổi claim code
+            showChangeClaimCodeModal(deviceId);
+        });
+    }).catch(error => {
+        console.error('❌ Lỗi import auth.js:', error);
+    });
+}
+
+/**
+ * Hiển thị modal đổi Claim Code
+ */
+function showChangeClaimCodeModal(deviceId) {
+    const device = mockDevices[deviceId];
+    const currentClaimCode = device.info?.claimCode || '';
+    const deviceName = device.info?.deviceName || deviceId;
+
+    const modalHTML = `
+        <div class="modal show" id="changeClaimCodeModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 class="modal-title">🔑 Đổi Claim Code</h3>
+                    <button class="modal-close" id="closeChangeClaimCode">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p style="margin-bottom: 20px;">
+                        <strong>Thiết bị:</strong> ${deviceName}<br>
+                        <strong>Device ID:</strong> <code>${deviceId}</code>
+                    </p>
+                    <form id="changeClaimCodeForm">
+                        <div class="form-group">
+                            <label>Claim Code hiện tại</label>
+                            <input type="text" class="form-control" value="${currentClaimCode}" disabled>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Claim Code mới (6 ký tự) *</label>
+                            <input type="text" id="newClaimCode" class="form-control" placeholder="Nhập claim code mới" maxlength="6" required>
+                        </div>
+
+                        <div class="form-group" style="text-align: center;">
+                            <button type="button" class="btn btn-secondary" id="btnGenerateNewClaimCode">🎲 Tạo ngẫu nhiên</button>
+                        </div>
+
+                        <div id="changeClaimCodeError" class="error-message" style="display: none; margin-top: 12px;">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" id="btnCancelChangeClaimCode">Hủy</button>
+                    <button class="btn btn-primary" id="btnSaveClaimCode">💾 Lưu</button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    const container = document.getElementById('modalContainer');
+    container.innerHTML = modalHTML;
+
+    // Gắn sự kiện
+    document.getElementById('closeChangeClaimCode').onclick = () => document.getElementById('changeClaimCodeModal').remove();
+    document.getElementById('btnCancelChangeClaimCode').onclick = () => document.getElementById('changeClaimCodeModal').remove();
+    document.getElementById('btnGenerateNewClaimCode').onclick = () => {
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        let code = '';
+        for (let i = 0; i < 6; i++) {
+            code += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        document.getElementById('newClaimCode').value = code;
+    };
+    document.getElementById('btnSaveClaimCode').onclick = () => saveNewClaimCode(deviceId);
+}
+
+/**
+ * Lưu Claim Code mới
+ */
+async function saveNewClaimCode(deviceId) {
+    const newClaimCode = document.getElementById('newClaimCode').value.trim().toUpperCase();
+    const errorDiv = document.getElementById('changeClaimCodeError');
+
+    // Validate
+    if (!newClaimCode) {
+        errorDiv.textContent = '❌ Vui lòng nhập Claim Code mới!';
+        errorDiv.style.display = 'block';
+        return;
+    }
+
+    if (newClaimCode.length !== 6) {
+        errorDiv.textContent = '❌ Claim Code phải có đúng 6 ký tự!';
+        errorDiv.style.display = 'block';
+        return;
+    }
+
+    try {
+        // Cập nhật claim code trong Firebase
+        if (firebaseEnabled) {
+            await updateData(`devices/${deviceId}/info`, {
+                claimCode: newClaimCode,
+                lastModified: Date.now()
+            });
+        }
+
+        // Cập nhật trong mock data
+        mockDevices[deviceId].info.claimCode = newClaimCode;
+
+        // Đóng modal
+        document.getElementById('changeClaimCodeModal').remove();
+
+        // Render lại bảng
+        renderDeviceTable();
+
+        alert(`✅ Đã đổi Claim Code thành công!\nClaim Code mới: ${newClaimCode}`);
+
+    } catch (error) {
+        errorDiv.textContent = '❌ Lỗi khi lưu Claim Code: ' + error.message;
+        errorDiv.style.display = 'block';
+    }
+}
+
+/**
+ * Xóa thiết bị
+ */
+async function deleteDevice(deviceId) {
+    console.log('🗑 deleteDevice called for device:', deviceId);
+    const device = mockDevices[deviceId];
+    if (!device) {
+        console.error('❌ Device not found:', deviceId);
+        return;
+    }
+
+    const deviceName = (device.info?.deviceName && device.info.deviceName.trim() !== '') ? device.info.deviceName : deviceId;
+
+    // Đóng menu trước tiên
+    console.log('  - Đóng menu...');
+    closeAllMenus();
+
+    if (!confirm(`⚠️ Bạn có chắc muốn xóa thiết bị "${deviceName}"?\n\nHành động này không thể hoàn tác!`)) {
+        return;
+    }
+
+    try {
+        // Xóa từ Firebase
+        if (firebaseEnabled) {
+            await deleteData(`devices/${deviceId}`);
+        }
+
+        // Xóa từ mock data
+        delete mockDevices[deviceId];
+
+        // Render lại bảng
+        renderDeviceTable();
+        updateDeviceStats();
+
+        alert(`✅ Đã xóa thiết bị "${deviceName}" thành công!`);
+
+    } catch (error) {
+        alert('❌ Lỗi khi xóa thiết bị: ' + error.message);
+    }
+}
+
+/**
+ * Cập nhật thống kê dashboard từ dữ liệu thiết bị
+ */
+export function updateDeviceStats() {
+    const devices = Object.values(mockDevices);
+
+    const claimed = devices.filter(d => d.info?.claimed === true).length;
+    const online = devices.filter(d => d.status?.online === true).length;
+    const offline = devices.filter(d => d.status?.online === false).length;
+    const unclaimed = devices.filter(d => d.info?.claimed === false).length;
+
+    document.getElementById('statClaimed').textContent = claimed;
+    document.getElementById('statOnline').textContent = online;
+    document.getElementById('statOffline').textContent = offline;
+    document.getElementById('statUnclaimed').textContent = unclaimed;
+}
+
+/**
+ * Hiển thị/ẩn claim code (tương tự password)
+ */
+function showClaimCode(deviceId) {
+    console.log('👁 showClaimCode called for device:', deviceId);
+    const device = mockDevices[deviceId];
+    if (!device) {
+        console.error('❌ Device not found:', deviceId);
+        return;
+    }
+
+    const claimSpan = document.getElementById(`claim_${deviceId}`);
+    const eyeIcon = document.getElementById(`claim_eye_${deviceId}`);
+    const claimCode = device.info?.claimCode || '------';
+
+    if (claimSpan.textContent === '••••••') {
+        // Hiển thị claim code
+        claimSpan.textContent = claimCode;
+        claimSpan.style.color = '#2196F3';
+        claimSpan.style.fontWeight = 'bold';
+        eyeIcon.className = 'bi bi-eye-slash';
+
+        // Tự động ẩn sau 10 giây
+        setTimeout(() => {
+            claimSpan.textContent = '••••••';
+            claimSpan.style.color = '';
+            claimSpan.style.fontWeight = '';
+            eyeIcon.className = 'bi bi-eye';
+        }, 5000);
+    } else {
+        // Ẩn claim code
+        claimSpan.textContent = '••••••';
+        claimSpan.style.color = '';
+        claimSpan.style.fontWeight = '';
+        eyeIcon.className = 'bi bi-eye';
+    }
+}
+
+
+/**
+ * Xuất thông tin thiết bị (với tùy chọn in PDF)
+ */
+function exportDeviceInfo(deviceId) {
+    console.log('📄 exportDeviceInfo called for device:', deviceId);
+    const device = mockDevices[deviceId];
+    if (!device) {
+        console.error('❌ Device not found:', deviceId);
+        return;
+    }
+
+    // Đóng menu trước tiên
+    console.log('  - Đóng menu...');
+    closeAllMenus();
+
+    const info = device.info || {};
+    const claimCode = info.claimCode || '------';
+
+    // Hiển thị modal với thông tin và tùy chọn in
+    const modalHTML = `
+        <div class="modal show" id="exportDeviceInfoModal">
+            <div class="modal-content" style="max-width: 480px;">
+                <div class="modal-header">
+                    <h3 class="modal-title">📄 Xuất thông tin thiết bị</h3>
+                    <button class="modal-close" id="closeExportInfo">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div style="background: var(--bg-primary); padding: 16px; border-radius: 10px; margin-bottom: 16px;">
+                        <div style="margin-bottom: 12px;">
+                            <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 4px;">Mã thiết bị</div>
+                            <code style="font-size: 15px; background: var(--bg-secondary); padding: 6px 10px; border-radius: 6px; display: inline-block;">${deviceId}</code>
+                        </div>
+                        <div>
+                            <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 4px;">Mã kích hoạt</div>
+                            <code style="font-size: 18px; color: #f44336; font-weight: bold; background: #fff3cd; padding: 6px 12px; border-radius: 6px; display: inline-block; letter-spacing: 2px;">${claimCode}</code>
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="printToPDF" checked>
+                            <span>In ra file PDF</span>
+                        </label>
+                        <p style="font-size: 12px; color: var(--text-secondary); margin-top: 6px; margin-left: 32px;">
+                            Nếu bỏ chọn, thông tin chỉ hiển thị trên màn hình
+                        </p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" id="btnCancelExport">Đóng</button>
+                    <button class="btn btn-primary" id="btnConfirmExport">✅ Xác nhận</button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    const container = document.getElementById('modalContainer');
+    container.innerHTML = modalHTML;
+
+    // Gắn sự kiện
+    document.getElementById('closeExportInfo').onclick = () => document.getElementById('exportDeviceInfoModal').remove();
+    document.getElementById('btnCancelExport').onclick = () => document.getElementById('exportDeviceInfoModal').remove();
+    document.getElementById('btnConfirmExport').onclick = () => {
+        const printToPDF = document.getElementById('printToPDF').checked;
+
+        if (printToPDF) {
+            // In PDF
+            generateDevicePDF(deviceId, claimCode);
+        }
+
+        // Đóng modal
+        document.getElementById('exportDeviceInfoModal').remove();
+
+        if (!printToPDF) {
+            alert('✅ Thông tin thiết bị đã được hiển thị!');
+        }
+    };
+}
+
+/**
+ * Tạo PDF thông tin thiết bị (chỉ deviceID và ClaimCode)
+ */
+function generateDevicePDF(deviceId, claimCode) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    // ===== HEADER =====
+    doc.setFontSize(26);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(76, 175, 80);
+    doc.text('SMART AC CONTROL', 105, 25, { align: 'center' });
+
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 100, 100);
+    doc.text('Giai phap dieu hoa thong minh', 105, 33, { align: 'center' });
+
+    // Line separator
+    doc.setLineWidth(0.8);
+    doc.setDrawColor(76, 175, 80);
+    doc.line(20, 40, 190, 40);
+
+    // ===== THANK YOU =====
+    doc.setFontSize(13);
+    doc.setFont('helvetica', 'italic');
+    doc.setTextColor(50, 50, 50);
+    doc.text('Cam on quy khach da su dung dich vu!', 105, 52, { align: 'center' });
+
+    // ===== TITLE =====
+    doc.setFontSize(20);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(33, 150, 243);
+    doc.text('THONG TIN THIET BI', 105, 68, { align: 'center' });
+
+    // ===== DEVICE INFO BOX =====
+    doc.setDrawColor(220, 220, 220);
+    doc.setFillColor(250, 250, 250);
+    doc.roundedRect(20, 80, 170, 70, 3, 3, 'FD');
+
+    // Device ID
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 100, 100);
+    doc.text('Ma thiet bi (Device ID):', 30, 95);
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(50, 50, 50);
+    doc.text(deviceId, 30, 105);
+
+    // Claim Code - HIGHLIGHTED
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 100, 100);
+    doc.text('Ma kich hoat (Claim Code):', 30, 125);
+
+    doc.setFillColor(255, 235, 59);
+    doc.roundedRect(27, 130, 70, 14, 2, 2, 'F');
+
+    doc.setFontSize(22);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(220, 0, 0);
+    doc.text(claimCode, 30, 141);
+
+    // ===== WARNING =====
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'italic');
+    doc.setTextColor(244, 67, 54);
+    doc.text('Luu y: Giu kin ma nay! Khong chia se cho nguoi khac.', 30, 165);
+
+    // ===== INSTRUCTIONS =====
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(0, 0, 0);
+    doc.text('HUONG DAN SU DUNG:', 20, 175);
+
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(60, 60, 60);
+    doc.text('1. Bat thiet bi, ket noi WiFi do thiet bi phat ra co dang AC-....', 25, 185);
+    doc.text('2. Vao Google Chrome, nhap 192.168.4.1, nhap thong tin kich hoat', 25, 193);
+    doc.text('   va thiet lap WiFi cho thiet bi.', 25, 201);
+    doc.text('3. Neu den sang do khong nhap nhay thi da thanh cong.', 25, 209);
+    doc.text('   Neu den nhap nhay do la chua thanh cong, thuc hien lai buoc 2.', 25, 217);
+    doc.text('4. Tai ung dung "Smart AC" tren Google Play / App Store', 25, 227);
+    doc.text('5. Dang ky tai khoan hoac dang nhap', 25, 235);
+    doc.text('6. Chon "Them thiet bi" va nhap thong tin kich hoat phia tren', 25, 243);
+    doc.text('7. Chon cach dieu khien va bat dau dieu khien dieu hoa qua ung dung!', 25, 251);
+
+    // ===== FOOTER =====
+    doc.setLineWidth(0.5);
+    doc.setDrawColor(200, 200, 200);
+    doc.line(20, 260, 190, 260);
+
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'italic');
+    doc.setTextColor(120, 120, 120);
+    doc.text('Design by Dang Trung Hieu - Dai hoc Thu Dau Mot', 105, 270, { align: 'center' });
+
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Ngay tao: ${new Date().toLocaleString('vi-VN')}`, 105, 278, { align: 'center' });
+
+    doc.setFontSize(7);
+    doc.setTextColor(150, 150, 150);
+    doc.text('Hotline: 1900-xxxx | Email: support@smartac.com', 105, 285, { align: 'center' });
+
+    // Save PDF
+    doc.save(`SmartAC_${claimCode}_${deviceId}.pdf`);
+
+    console.log('✅ Đã xuất PDF cho thiết bị:', deviceId);
+}
+
+/**
+ * ==================== FILTER & SEARCH ====================
+ */
+
+// Biến lưu trạng thái filter
+let deviceFilters = {
+    searchText: '',
+    status: ''
+};
+
+/**
+ * Khởi tạo filter events
+ */
+export function initDeviceFilters() {
+    const searchInput = document.getElementById('deviceSearchInput');
+    const statusFilter = document.getElementById('deviceStatusFilter');
+    const resetBtn = document.getElementById('btnResetDeviceFilter');
+
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            deviceFilters.searchText = e.target.value.toLowerCase().trim();
+            renderDeviceTable();
+        });
+    }
+
+    if (statusFilter) {
+        statusFilter.addEventListener('change', (e) => {
+            deviceFilters.status = e.target.value;
+            renderDeviceTable();
+        });
+    }
+
+    if (resetBtn) {
+        resetBtn.addEventListener('click', () => {
+            deviceFilters = { searchText: '', status: '' };
+            if (searchInput) searchInput.value = '';
+            if (statusFilter) statusFilter.value = '';
+            renderDeviceTable();
+        });
+    }
+}
+
+/**
+ * Lọc devices theo điều kiện
+ */
+function filterDevices() {
+    let filtered = Object.entries(mockDevices);
+
+    // Lọc theo text search
+    if (deviceFilters.searchText) {
+        filtered = filtered.filter(([deviceId, device]) => {
+            const info = device.info || {};
+            const deviceName = (info.deviceName || '').toLowerCase();
+            const ownerName = (device.ownerName || '').toLowerCase();
+            const searchText = deviceFilters.searchText;
+
+            return deviceId.toLowerCase().includes(searchText) ||
+                   deviceName.includes(searchText) ||
+                   ownerName.includes(searchText);
+        });
+    }
+
+    // Lọc theo status
+    if (deviceFilters.status) {
+        filtered = filtered.filter(([deviceId, device]) => {
+            const status = device.status || {};
+            const info = device.info || {};
+
+            switch (deviceFilters.status) {
+                case 'online':
+                    return status.online === true;
+                case 'offline':
+                    return status.online !== true;
+                case 'claimed':
+                    return info.claimed === true;
+                case 'unclaimed':
+                    return info.claimed !== true;
+                default:
+                    return true;
+            }
+        });
+    }
+
+    return Object.fromEntries(filtered);
+}
+
+/**
+ * ==================== EXPORT MODULE ====================
+ * Export các hàm cần thiết
+ */
+window.deviceModule = {
+    // Chức năng chính
+    initDevices,
+    renderDeviceTable,
+    updateDeviceStats,
+    initDeviceFilters,
+
+    // Chức năng hiển thị
+    showClaimCode,
+
+    // Utilities
+    filterDevices
+};
+
+console.log('✅ Device module đã được export:', Object.keys(window.deviceModule));

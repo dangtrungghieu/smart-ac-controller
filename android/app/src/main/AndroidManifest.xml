@@ -1,6 +1,18 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- ===== THÊM: Quyền cho Voice Control ===== -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- ===== KẾT THÚC THÊM ===== -->
+
+    <!-- ===== THÊM: Quyền cho Background Service (Lịch tự động) ===== -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- ===== KẾT THÚC THÊM ===== -->
+
     <application
-        android:label="ac_control_app"
+        android:label="AC Smart App"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
@@ -41,5 +53,10 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
+        <!-- ===== THÊM: Cho Speech Recognition Service ===== -->
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
+        <!-- ===== KẾT THÚC THÊM ===== -->
     </queries>
 </manifest>
