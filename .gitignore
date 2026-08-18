@@ -43,3 +43,87 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# ===== FIREBASE CONFIGURATION (SENSITIVE) =====
+# Never commit Firebase configuration files with API keys
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+ios/firebase.json
+lib/firebase_options.dart
+
+# ===== ANDROID SECURITY =====
+# Remember to never publicly share your keystore.
+# See https://flutter.dev/to/reference-keystore
+key.properties
+**/*.keystore
+**/*.jks
+
+# ===== ENVIRONMENT & SECRETS =====
+.env
+.env.local
+*.pem
+*.key
+*.p12
+
+# ===== IDE & EDITOR =====
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+
+# ===== OS GENERATED FILES =====
+Thumbs.db
+*.log
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# ===== BUILD OUTPUT =====
+/dist/
+/bin/
+/out/
+
+# ===== MACOS =====
+.DS_Store
+.AppleDouble
+.LSOverride
+*.mode1v3
+*.mode2v3
+*.moved-aside
+*.pbxuser
+*.perspectivev3
+**/*sync/
+.sconsign.dblite
+.tags*
+**/.vagrant/
+**/DerivedData/
+Icon?
+**/Pods/
+**/.symlinks/
+profile
+xcuserdata
+**/.generated/
+Flutter/App.framework
+Flutter/Flutter.framework
+Flutter/Flutter.podspec
+Flutter/Generated.xcconfig
+Flutter/ephemeral/
+Flutter/app.flx
+Flutter/app.zip
+Flutter/flutter_assets/
+Flutter/flutter_export_environment.sh
+ServiceDefinitions.json
+Runner/GeneratedPluginRegistrant.*
+
+# Exceptions to above rules.
+!default.mode1v3
+!default.mode2v3
+!default.pbxuser
+!default.perspectivev3
